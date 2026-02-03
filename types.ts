@@ -54,7 +54,15 @@ export interface AdminUser {
   status: 'ACTIVE' | 'LOCKED' | 'DISABLED';
 }
 
-export type User = FarmerUser | AdminUser | null;
+export interface BuyerUser {
+  id: string;
+  role: UserRole.BUYER;
+  fullName: string;
+  phone?: string;
+  favorites: string[]; // IDs of products/farms
+}
+
+export type User = FarmerUser | AdminUser | BuyerUser | null;
 
 export enum CertType {
   VIETGAP = 'VietGAP',

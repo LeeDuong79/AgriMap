@@ -2,30 +2,73 @@
 import React, { useEffect, useRef, useState } from 'react';
 import L from 'leaflet';
 import { FarmProduct } from '../types';
-import { MapPin, Phone, Star, Award, ExternalLink, Navigation } from 'lucide-react';
+import { MapPin, Phone, Star, Award, ExternalLink, Navigation, Layers, Globe, Moon, Mountain } from 'lucide-react';
 
 interface MapInterfaceProps {
   products: FarmProduct[];
   isFarmerView?: boolean;
 }
 
+const TILE_LAYERS = {
+  standard: {
+    url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+    attribution: '&copy; OpenStreetMap contributors'
+  },
+  satellite: {
+    url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+    attribution: 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EBP, and the GIS User Community'
+  },
+  dark: {
+    url: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
+  },
+  terrain: {
+    url: 'https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png',
+    attribution: 'Map data: &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, <a href="http://viewfinderpanoramas.org">SRTM</a> | Map style: &copy; <a href="https://opentopomap.org">OpenTopoMap</a> (<a href="https://creativecommons.org/licenses/by-sa/3.0/">CC-BY-SA</a>)'
+  }
+};
+
 const MapInterface: React.FC<MapInterfaceProps> = ({ products, isFarmerView = false }) => {
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<L.Map | null>(null);
   const markersRef = useRef<L.Marker[]>([]);
+  const layerRef = useRef<L.TileLayer | null>(null);
   const [selectedProduct, setSelectedProduct] = useState<FarmProduct | null>(null);
+  const [activeLayer, setActiveLayer] = useState<keyof typeof TILE_LAYERS>('standard');
+  const [isLocating, setIsLocating] = useState(false);
 
   useEffect(() => {
     if (!mapContainerRef.current) return;
+    
     if (!mapRef.current) {
       mapRef.current = L.map(mapContainerRef.current, {
         center: [15.8, 108.2],
         zoom: 6,
         zoomControl: false
       });
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(mapRef.current);
+
+      layerRef.current = L.tileLayer(TILE_LAYERS[activeLayer].url, {
+        attribution: TILE_LAYERS[activeLayer].attribution
+      }).addTo(mapRef.current);
+
       L.control.zoom({ position: 'bottomright' }).addTo(mapRef.current);
     }
+  }, []);
+
+  // Handle Layer Switching
+  useEffect(() => {
+    if (mapRef.current && layerRef.current) {
+      mapRef.current.removeLayer(layerRef.current);
+      layerRef.current = L.tileLayer(TILE_LAYERS[activeLayer].url, {
+        attribution: TILE_LAYERS[activeLayer].attribution
+      }).addTo(mapRef.current);
+    }
+  }, [activeLayer]);
+
+  // Handle Markers
+  useEffect(() => {
+    if (!mapRef.current) return;
+
     markersRef.current.forEach(m => m.remove());
     markersRef.current = [];
     
@@ -39,7 +82,6 @@ const MapInterface: React.FC<MapInterfaceProps> = ({ products, isFarmerView = fa
     });
 
     products.forEach(p => {
-      // Highlight farmer's own product if needed (logic can be added)
       const marker = L.marker([p.location.lat, p.location.lng], { icon: createIcon() })
         .addTo(mapRef.current!)
         .on('click', () => setSelectedProduct(p));
@@ -47,15 +89,87 @@ const MapInterface: React.FC<MapInterfaceProps> = ({ products, isFarmerView = fa
     });
   }, [products]);
 
+  const handleMyLocation = () => {
+    if (!navigator.geolocation) {
+      alert("Trình duyệt của bạn không hỗ trợ định vị.");
+      return;
+    }
+
+    setIsLocating(true);
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const { latitude, longitude } = position.coords;
+        if (mapRef.current) {
+          mapRef.current.flyTo([latitude, longitude], 14, { duration: 1.5 });
+          
+          // Temporary marker for user location
+          const userIcon = L.divIcon({
+            className: 'user-location-icon',
+            html: `<div class="w-4 h-4 bg-blue-600 rounded-full border-2 border-white shadow-lg animate-ping"></div>`,
+            iconSize: [16, 16]
+          });
+          L.marker([latitude, longitude], { icon: userIcon }).addTo(mapRef.current);
+        }
+        setIsLocating(false);
+      },
+      (error) => {
+        console.error(error);
+        alert("Không thể lấy vị trí của bạn. Vui lòng cấp quyền truy cập.");
+        setIsLocating(false);
+      }
+    );
+  };
+
   return (
-    <div className="relative w-full h-full">
+    <div className="relative w-full h-full bg-slate-100">
       <div ref={mapContainerRef} className="w-full h-full z-0" />
       
-      {/* Floating UI Elements */}
-      <div className="absolute top-6 right-6 z-[1000] flex flex-col gap-3">
-        <button className="bg-white border-4 border-black p-4 rounded-2xl shadow-2xl hover:bg-slate-50 transition-all flex items-center gap-3 font-black text-black">
-          <Navigation size={24} className="text-blue-700" />
-          VỊ TRÍ CỦA TÔI
+      {/* Top Controls Overlay */}
+      <div className="absolute top-6 left-6 right-6 z-[1000] flex flex-col md:flex-row justify-between items-start gap-4 pointer-events-none">
+        {/* Layer Switcher */}
+        <div className="flex bg-white border-4 border-black p-1.5 rounded-2xl shadow-xl pointer-events-auto">
+          <button 
+            onClick={() => setActiveLayer('standard')}
+            className={`p-3 rounded-xl transition-all flex items-center gap-2 font-black text-xs uppercase ${activeLayer === 'standard' ? 'bg-black text-white' : 'hover:bg-slate-100 text-black'}`}
+            title="Bản đồ chuẩn"
+          >
+            <Layers size={18} />
+            <span className="hidden sm:inline">Chuẩn</span>
+          </button>
+          <button 
+            onClick={() => setActiveLayer('satellite')}
+            className={`p-3 rounded-xl transition-all flex items-center gap-2 font-black text-xs uppercase ${activeLayer === 'satellite' ? 'bg-black text-white' : 'hover:bg-slate-100 text-black'}`}
+            title="Vệ tinh"
+          >
+            <Globe size={18} />
+            <span className="hidden sm:inline">Vệ tinh</span>
+          </button>
+          <button 
+            onClick={() => setActiveLayer('dark')}
+            className={`p-3 rounded-xl transition-all flex items-center gap-2 font-black text-xs uppercase ${activeLayer === 'dark' ? 'bg-black text-white' : 'hover:bg-slate-100 text-black'}`}
+            title="Chế độ tối"
+          >
+            <Moon size={18} />
+            <span className="hidden sm:inline">Tối</span>
+          </button>
+          <button 
+            onClick={() => setActiveLayer('terrain')}
+            className={`p-3 rounded-xl transition-all flex items-center gap-2 font-black text-xs uppercase ${activeLayer === 'terrain' ? 'bg-black text-white' : 'hover:bg-slate-100 text-black'}`}
+            title="Địa hình"
+          >
+            <Mountain size={18} />
+            <span className="hidden sm:inline">Địa hình</span>
+          </button>
+        </div>
+
+        {/* My Location Button */}
+        <button 
+          onClick={handleMyLocation}
+          disabled={isLocating}
+          className={`bg-white border-4 border-black p-4 rounded-2xl shadow-2xl hover:bg-slate-50 transition-all flex items-center gap-3 font-black text-black pointer-events-auto active:scale-95 ${isLocating ? 'opacity-50' : ''}`}
+        >
+          <Navigation size={24} className={`${isLocating ? 'animate-spin' : 'text-blue-700'}`} />
+          {isLocating ? 'ĐANG ĐỊNH VỊ...' : 'VỊ TRÍ CỦA TÔI'}
         </button>
       </div>
 

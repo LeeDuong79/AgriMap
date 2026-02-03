@@ -1,10 +1,10 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { UserRole, AdminLevel, User, FarmerUser, AdminUser } from '../types';
+import { UserRole, AdminLevel, User, FarmerUser, AdminUser, BuyerUser } from '../types';
 import { 
   ShieldCheck, User as UserIcon, MapPin, Phone, Lock, 
   Mail, Landmark, CheckCircle2, ChevronRight, Fingerprint,
-  Building2, Camera, MapIcon, KeyRound, ArrowLeft
+  Building2, Camera, MapIcon, KeyRound, ArrowLeft, ShoppingBag
 } from 'lucide-react';
 import L from 'leaflet';
 
@@ -14,7 +14,7 @@ interface AuthScreenProps {
 
 const AuthScreen: React.FC<AuthScreenProps> = ({ onLogin }) => {
   const [step, setStep] = useState<'CHOICE' | 'AUTH' | 'OTP'>('CHOICE');
-  const [activeBranch, setActiveBranch] = useState<UserRole.FARMER | UserRole.ADMIN | null>(null);
+  const [activeBranch, setActiveBranch] = useState<UserRole | null>(null);
   const [isRegister, setIsRegister] = useState(false);
   
   // Farmer State
@@ -106,6 +106,16 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ onLogin }) => {
     }
   };
 
+  const handleBuyerLogin = () => {
+    const user: BuyerUser = {
+      id: 'B-' + Date.now(),
+      role: UserRole.BUYER,
+      fullName: 'Khách hàng Việt',
+      favorites: []
+    };
+    onLogin(user);
+  };
+
   if (step === 'CHOICE') {
     return (
       <div className="min-h-screen bg-white flex flex-col items-center justify-center p-6">
@@ -117,32 +127,47 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ onLogin }) => {
           <p className="text-xl font-bold text-slate-600 uppercase tracking-widest">Hệ thống số hóa Nông nghiệp Quốc gia</p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl w-full">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-6xl w-full">
+          {/* Consumer Choice */}
+          <button 
+            onClick={handleBuyerLogin}
+            className="group relative bg-white border-4 border-black p-8 rounded-[3rem] hover:bg-blue-50 transition-all text-left shadow-[10px_10px_0px_0px_rgba(0,0,0,1)] hover:translate-x-1 hover:translate-y-1 hover:shadow-none"
+          >
+            <div className="bg-blue-700 text-white p-4 rounded-2xl w-fit mb-6 group-hover:scale-110 transition-transform">
+              <ShoppingBag size={32} />
+            </div>
+            <h3 className="text-2xl font-black text-black mb-4 uppercase">Người Tiêu Dùng</h3>
+            <p className="text-sm font-bold text-slate-700 leading-relaxed mb-6">Truy xuất nguồn gốc, mua sắm nông sản sạch từ vùng trồng chính hãng.</p>
+            <div className="flex items-center gap-2 font-black text-black group-hover:gap-4 transition-all">
+              KHÁM PHÁ NGAY <ChevronRight />
+            </div>
+          </button>
+
           {/* Farmer Choice */}
           <button 
             onClick={() => { setActiveBranch(UserRole.FARMER); setStep('AUTH'); }}
-            className="group relative bg-white border-4 border-black p-10 rounded-[3rem] hover:bg-green-50 transition-all text-left shadow-[10px_10px_0px_0px_rgba(0,0,0,1)] hover:translate-x-1 hover:translate-y-1 hover:shadow-none"
+            className="group relative bg-white border-4 border-black p-8 rounded-[3rem] hover:bg-green-50 transition-all text-left shadow-[10px_10px_0px_0px_rgba(0,0,0,1)] hover:translate-x-1 hover:translate-y-1 hover:shadow-none"
           >
             <div className="bg-green-700 text-white p-4 rounded-2xl w-fit mb-6 group-hover:scale-110 transition-transform">
-              <UserIcon size={40} />
+              <UserIcon size={32} />
             </div>
-            <h3 className="text-3xl font-black text-black mb-4 uppercase">Tôi là Nông dân</h3>
-            <p className="text-lg font-bold text-slate-700 leading-relaxed mb-6">Đăng ký vùng trồng, cập nhật sản lượng và kết nối thị trường tiêu thụ.</p>
+            <h3 className="text-2xl font-black text-black mb-4 uppercase">Tôi là Nông dân</h3>
+            <p className="text-sm font-bold text-slate-700 leading-relaxed mb-6">Đăng ký vùng trồng, cập nhật sản lượng và kết nối thị trường tiêu thụ.</p>
             <div className="flex items-center gap-2 font-black text-black group-hover:gap-4 transition-all">
-              TRUY CẬP HỆ THỐNG <ChevronRight />
+              QUẢN LÝ VƯỜN <ChevronRight />
             </div>
           </button>
 
           {/* Admin Choice */}
           <button 
             onClick={() => { setActiveBranch(UserRole.ADMIN); setStep('AUTH'); }}
-            className="group relative bg-white border-4 border-black p-10 rounded-[3rem] hover:bg-slate-50 transition-all text-left shadow-[10px_10px_0px_0px_rgba(0,0,0,1)] hover:translate-x-1 hover:translate-y-1 hover:shadow-none"
+            className="group relative bg-white border-4 border-black p-8 rounded-[3rem] hover:bg-slate-50 transition-all text-left shadow-[10px_10px_0px_0px_rgba(0,0,0,1)] hover:translate-x-1 hover:translate-y-1 hover:shadow-none"
           >
             <div className="bg-black text-white p-4 rounded-2xl w-fit mb-6 group-hover:scale-110 transition-transform">
-              <ShieldCheck size={40} />
+              <ShieldCheck size={32} />
             </div>
-            <h3 className="text-3xl font-black text-black mb-4 uppercase">Cán bộ Nhà nước</h3>
-            <p className="text-lg font-bold text-slate-700 leading-relaxed mb-6">Quản lý thực địa, phê duyệt mã số vùng trồng và điều hành dữ liệu số.</p>
+            <h3 className="text-2xl font-black text-black mb-4 uppercase">Cán bộ Nhà nước</h3>
+            <p className="text-sm font-bold text-slate-700 leading-relaxed mb-6">Quản lý thực địa, phê duyệt mã số vùng trồng và điều hành dữ liệu số.</p>
             <div className="flex items-center gap-2 font-black text-black group-hover:gap-4 transition-all">
               CỔNG ĐIỀU HÀNH <ChevronRight />
             </div>
@@ -251,7 +276,7 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ onLogin }) => {
                        <input type="password" className="w-full bg-slate-50 border-2 border-slate-300 p-4 pl-12 rounded-2xl font-bold focus:border-black outline-none" placeholder="••••••••" />
                     </div>
                   </div>
-                  <button onClick={() => onLogin({id: 'f1', role: UserRole.FARMER} as any)} className="w-full py-5 bg-green-700 text-white font-black text-xl rounded-2xl shadow-xl hover:bg-green-800 transition-all">
+                  <button onClick={() => onLogin({id: 'f1', role: UserRole.FARMER, farmName: 'HTX Bến Tre'} as any)} className="w-full py-5 bg-green-700 text-white font-black text-xl rounded-2xl shadow-xl hover:bg-green-800 transition-all">
                     ĐĂNG NHẬP NGAY
                   </button>
                 </div>
